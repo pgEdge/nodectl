@@ -491,43 +491,79 @@ function copySharedLibs {
 	return
 }
 
+function updateSharedLibPathsForLinux {
+  libPathLog=$baseDir/$workDir/logs/libPath.log
+  echo "#   updateSharedLibPathsForLinux()"
+
+  cd $buildLocation/bin
+  echo "#     looping thru executables"
+  for file in `ls -d *` ; do
+	##echo "### $file"
+	chrpath -r "\${ORIGIN}/../lib" "$file" >> $libPathLog 2>&1
+  done
+
+  libSuffix="*so*"
+
+  cd $buildLocation/lib
+  echo "#     looping thru shared objects"
+  for file in `ls -d $libSuffix 2>/dev/null` ; do
+	##echo "### $file"
+	chrpath -r "\${ORIGIN}/../lib" "$file" >> $libPathLog 2>&1
+  done
+
+  echo "#     looping thru lib/postgresql "
+  if [[ -d "$buildLocation/lib/postgresql" ]]; then
+	cd $buildLocation/lib/postgresql
+	##echo "### $file"
+    for file in `ls -d $libSuffix 2>/dev/null` ; do
+      chrpath -r "\${ORIGIN}/../../lib" "$file" >> $libPathLog 2>&1
+    done
+  fi
+
+}
+
+function updateSharedLibPathsForMacOS {
+  libPathLog=$baseDir/$workDir/logs/libPath.log
+  echo "#   updateSharedLibPathsForMacOS()"
+
+  cd $buildLocation/bin
+  echo "#     looping thru executables"
+  for file in `ls -d *` ; do
+	##echo "### $file"
+	chrpath -r "\${ORIGIN}/../lib" "$file" >> $libPathLog 2>&1
+  done
+
+  libSuffix="*dylib*"
+
+  cd $buildLocation/lib
+  echo "#     looping thru shared objects"
+  for file in `ls -d $libSuffix 2>/dev/null` ; do
+	##echo "### $file"
+	chrpath -r "\${ORIGIN}/../lib" "$file" >> $libPathLog 2>&1
+  done
+
+  echo "#     looping thru lib/postgresql"
+  if [[ -d "$buildLocation/lib/postgresql" ]]; then
+	cd $buildLocation/lib/postgresql
+	##echo "### $file"
+    for file in `ls -d $libSuffix 2>/dev/null` ; do
+      chrpath -r "\${ORIGIN}/../../lib" "$file" >> $libPathLog 2>&1
+    done
+  fi
+
+}
+
 
 function updateSharedLibPaths {
-	libPathLog=$baseDir/$workDir/logs/libPath.log
 	echo "#"
 	echo "# updateSharedLibPaths()"
 
-	cd $buildLocation/bin
-	echo "#   looping thru executables"
-	for file in `ls -d *` ; do
-		##echo "### $file"
-		chrpath -r "\${ORIGIN}/../lib" "$file" >> $libPathLog 2>&1
-	done
-
 	if [ `uname` == "Linux" ]; then
-		libSuffix="*so*"
+		updateSharedLibPathsForLinux
 	else
-		libSuffix="*dylib*"
+		updateSharedLibPathsForMacOS
 	fi
-
-	cd $buildLocation/lib
-	echo "#   looping thru shared objects"
-	for file in `ls -d $libSuffix 2>/dev/null` ; do
-		##echo "### $file"
-		chrpath -r "\${ORIGIN}/../lib" "$file" >> $libPathLog 2>&1 
-	done
-
-	echo "#   looping thru lib/postgresql "
-	if [[ -d "$buildLocation/lib/postgresql" ]]; then	
-		cd $buildLocation/lib/postgresql
-		##echo "### $file"
-        	for file in `ls -d $libSuffix 2>/dev/null` ; do
-                	chrpath -r "\${ORIGIN}/../../lib" "$file" >> $libPathLog 2>&1
-        	done
-	fi
-	
 }
-
 
 function createBundle {
 	echo "#"
