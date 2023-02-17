@@ -522,6 +522,25 @@ function updateSharedLibPathsForLinux {
 
 }
 
+function fixMacOSBinary {
+  binary="$1"
+  libPathPrefix="$2"
+  rpath="$3"
+  libPathLog="$4"
+
+  otool -L "$binary" |
+	awk '/^[[:space:]]+'"$libPathPrefix"'/ {print $1}' |
+	while read lib; do
+	  set -x
+	  install_name_tool -change "$lib" '@rpath/'$(basename "$lib") "$binary" >> $libPathLog 2>&1
+	  set +x
+	done
+
+  if otool -l "$binary" | grep -A3 RPATH | grep -q "$sharedLibs"; then
+	install_name_tool -rpath "$sharedLibs" "$rpath" "$binary" >> $libPathLog 2>&1
+  fi
+}
+
 function updateSharedLibPathsForMacOS {
   libPathLog=$baseDir/$workDir/logs/libPath.log
   echo "#   updateSharedLibPathsForMacOS()"
