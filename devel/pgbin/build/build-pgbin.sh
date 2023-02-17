@@ -531,9 +531,7 @@ function fixMacOSBinary {
   otool -L "$binary" |
 	awk '/^[[:space:]]+'"$libPathPrefix"'/ {print $1}' |
 	while read lib; do
-	  set -x
 	  install_name_tool -change "$lib" '@rpath/'$(basename "$lib") "$binary" >> $libPathLog 2>&1
-	  set +x
 	done
 
   if otool -l "$binary" | grep -A3 RPATH | grep -q "$sharedLibs"; then
