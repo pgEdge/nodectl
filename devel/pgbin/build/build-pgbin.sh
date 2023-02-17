@@ -541,30 +541,31 @@ function fixMacOSBinary {
 
 function updateSharedLibPathsForMacOS {
   libPathLog=$baseDir/$workDir/logs/libPath.log
+  escapedBaseDir="$(echo "$baseDir" | sed 's@/@\\/@g')"
   echo "#   updateSharedLibPathsForMacOS()"
 
   cd $buildLocation/bin
   echo "#     looping thru executables"
   for file in `ls -d *` ; do
 	##echo "### $file"
-	chrpath -r "\${ORIGIN}/../lib" "$file" >> $libPathLog 2>&1
+	fixMacOSBinary "$file" "$escapedBaseDir" '@executable_path/../lib' "$libPathLog"
   done
 
-  libSuffix="*dylib*"
-
+  libSuffix="*.dylib*"
   cd $buildLocation/lib
   echo "#     looping thru shared objects"
   for file in `ls -d $libSuffix 2>/dev/null` ; do
 	##echo "### $file"
-	chrpath -r "\${ORIGIN}/../lib" "$file" >> $libPathLog 2>&1
+	fixMacOSBinary "$file" "$escapedBaseDir" '@loader_path/../lib' "$libPathLog"
   done
 
+  libSuffix="*.so*"
   echo "#     looping thru lib/postgresql"
   if [[ -d "$buildLocation/lib/postgresql" ]]; then
 	cd $buildLocation/lib/postgresql
 	##echo "### $file"
     for file in `ls -d $libSuffix 2>/dev/null` ; do
-      chrpath -r "\${ORIGIN}/../../lib" "$file" >> $libPathLog 2>&1
+	  fixMacOSBinary "$file" "$escapedBaseDir" '@loader_path/../../lib' "$libPathLog"
     done
   fi
 
