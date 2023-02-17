@@ -65,23 +65,22 @@ dep9 = util.get_depend()
 
 mode_list = ["start", "stop", "restart", "status", "list", "info", "update",
              "upgrade", "downgrade", "enable", "disable", "install", "tune",
-             "remove", "reload", "activity", "help", "get", "set", "unset",
+             "remove", "reload", "help", "get", "set", "unset",
              "backrest", "change-pgconf",
              "top", "spock", "local-cluster", "pgbin", "--autostart", 
-             "-U", "-P", "-d", "-p", "--country", "--rm-data", "system", "updmgr",
-             "--relnotes", "--start", "--no-restart", "--no-preload",
+             "-U", "-P", "-d", "-p", "--country", "--rm-data", "sys", "um",
+             "--start", "--no-restart", "--no-preload",
              "--help", "--json", "--jsonp", "--test", "--extensions", "--svcs",
              "--list", "--old", "--showduplicates", "-y", "-t",
              "--verbose", "-v", "--debug", "--debug2"]
 
-mode_list_advanced = ['kill', 'config', 'deplist', 'download', 'init', 'clean', 
-                      'useradd', 'spock', 'pgbin', 'local-cluster', 'system', 'updmgr']
+mode_list_advanced = ['kill', 'config', 'init', 'clean', 'useradd', 'spock', 
+                      'pgbin', 'local-cluster', 'sys', 'um']
 
-ignore_comp_list = [ "get", "set", "unset",
-                     "spock", "pgbin", "local-cluster", "system", "updmgr",
-                     "useradd", "backrest", "change-pgconf"]
+ignore_comp_list = [ "get", "set", "unset", "spock", "pgbin", "local-cluster", 
+                     "sys", "um", "useradd", "backrest", "change-pgconf"]
 
-no_log_commands = ['status', 'info', 'list', 'top', 'cancel', 'get']
+no_log_commands = ['status', 'info', 'list', 'top', 'get']
 
 lock_commands = ["install", "remove", "update", "upgrade", "downgrade"]
 
@@ -278,14 +277,6 @@ class ProgressTarExtract(io.FileIO):
     if not os.path.isfile(pid_file):
       raise KeyboardInterrupt("No lock file exists.")
     percentage = self.tell()*100/self._total_size
-    ##if isJSON:
-    ##  json_dict = {}
-    ##  json_dict['state'] = "unpack"
-    ##  json_dict['status'] = "wip"
-    ##  json_dict['pct'] = int(percentage)
-    ##  json_dict['file'] = self.file_name
-    ##  json_dict['component'] = self.component_name
-    ##  print(json.dumps([json_dict]))
     return io.FileIO.read(self, size)
 
 
@@ -1138,6 +1129,7 @@ if "--debug" in args:
   my_logger.info("Enabling DEBUG mode")
   logging.getLogger('cli_logger').setLevel(logging.DEBUG)
   my_logger.debug("DEBUG enabled")
+  os.environ['pgeDebug'] = "1"
 
 if "--debug2" in args:
   args.remove('--debug2')
@@ -1145,6 +1137,7 @@ if "--debug2" in args:
   logging.getLogger('cli_logger').setLevel(clilog.DEBUG2)
   my_logger.debug("DEBUG enabled")
   my_logger.debug2("DEBUG2 enabled")
+  os.environ['pgeDebug'] = "2"
 
 isTTY=True
 if "--no-tty" in args:
@@ -1277,11 +1270,6 @@ if "--rm-data" in args and 'remove' in args:
   os.environ['isRM_DATA'] = "True"
   args.remove("--rm-data")
 
-isRELNOTES = False
-if "--relnotes" in args and ('info' in args or 'list' in args):
-  isRELNOTES = True
-  args.remove("--relnotes")
-
 isSILENT = False
 if "--silent" in args:
   isSILENT = True
@@ -1405,8 +1393,6 @@ try:
     if isVERBOSE:
       print(final_safe_cmd)
 
-    ## cannot use subprocess.Popen() because it won't allow us to use ./pg_pass
-
     rc = os.system(final_safe_cmd)
     if rc == 0:
       sys.exit(0)
@@ -1414,27 +1400,9 @@ try:
     sys.exit(1)
 
 
-  ## SYSTEM, LOCAL-CLUSTER, SPOCK, UPDMGR ########################################
-  if p_mode in ('system', 'local-cluster', 'spock', 'updmgr'):
+  ## SYS, LOCAL-CLUSTER, SPOCK, UM ###############################################
+  if p_mode in ('sys', 'local-cluster', 'spock', 'um'):
     fire_away(p_mode, args)
-
-
-
-  ## DIRLIST #####################################################################
-  if p_mode == "dirlist":
-    if len(args) == 3:
-      exit_cleanly(util.dirlist(isJSON, args[2]))
-    else:
-      util.exit_message("DIRLIST takes one argument", 1, isJSON)
-
-
-  ## CANCEL (delete the pid file) #############################################################
-  if p_mode == 'cancel':
-    try:
-      util.delete_file(pid_file)
-    except Exception as e:
-      pass
-    exit_cleanly(0)
 
 
   ## TOP ######################################################################################
@@ -1651,36 +1619,6 @@ try:
   if (p_mode == 'list'):
     meta.get_list(isSHOWDUPS, isEXTENSIONS, isJSON, isTEST, False, 
                   p_comp=p_comp, p_relnotes=isRELNOTES)
-
-
-  ## DEPLIST ##############################################################################
-  if (p_mode == 'deplist'):
-    dl = get_depend_list(p_comp_list)
-    exit_cleanly(0)
-
-  if (p_mode == 'download'):
-    if p_comp == "all":
-      util.print_error("Invalid component parameter (all)")
-      exit_cleanly(1)
-    for c in p_comp_list:
-      if(p_version==""):
-        ver = meta.get_latest_ver_plat(c)
-      else:
-        ver = p_version
-      base_name = c + "-" + ver
-      conf_cache = "conf" + os.sep + "cache"
-      bz2_file = conf_cache + os.sep + base_name + ".tar.bz2"
-      if os.path.exists(bz2_file) and is_downloaded(base_name):
-        msg = "File is already downloaded"
-        util.exit_message(msg, 1)
-      if not retrieve_comp(base_name, c):
-        comment = "Download failed"
-        util.exit_message(comment,1)
-      cwd_file = os.getcwd() + os.sep + base_name + ".tar.bz2"
-      copy2 (bz2_file, cwd_file)
-      comment = "Successfully downloaded."
-      file_size = util.get_file_size(os.path.getsize(bz2_file))
-    exit_cleanly(0)
 
 
   ## REMOVE ##################################################
@@ -1908,8 +1846,8 @@ try:
     sys.exit(run_script(p_comp, script_name, extra_args))
 
 
-  ## CONFIG, INIT, RELOAD, ACTIVITY ########################
-  if (p_mode in ['config', 'init', 'reload', 'activity', 'provision']):
+  ## CONFIG, INIT, RELOAD ##################################
+  if (p_mode in ['config', 'init', 'reload']):
     script_name = p_mode + "-" + p_comp
     sys.exit(run_script(p_comp, script_name, extra_args))
 
