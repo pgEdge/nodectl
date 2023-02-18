@@ -10,28 +10,28 @@ nc command [component] [options]
 ```
   help      - Display help file
   info      - Display OS or component information
-  status    - Display status of installed server components
-  list      - Display available/installed components 
 ```
 
 ## Service Control Commands ##############################################
 ```
   start     - Start server components
   stop      - Stop server components
+  status    - Display running status of installed server components
   reload    - Reload server configuration files (without a restart)
   restart   - Stop & then start server components
   enable    - Enable a component
   disable   - Disable a server server component from starting automatically
-  config    - Configure a component
-  init      - Initialize a component
 ```
 
 ## Software Install & Update Commands ####################################
 ```
+  list      - Display available/installed components 
   update    - Retrieve new lists of components
   upgrade   - Perform an upgrade of a component
   install   - Install (or re-install) a component  
   remove    - Un-install component   
+  config    - Configure a component
+  init      - Initialize a component
   clean     - Delete downloaded component files from local cache
 ```
 
